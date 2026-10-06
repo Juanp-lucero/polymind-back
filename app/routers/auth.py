@@ -5,7 +5,8 @@ from app.core.database import SessionLocal
 from app.core.security import (
     hash_password,
     verify_password,
-    create_access_token
+    create_access_token,
+    create_refresh_token
 )
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -50,7 +51,7 @@ def register(
     if existing_user:
         raise HTTPException(
             status_code=400,
-            detail="El correo electrónico ya está registrado"
+            detail="Email already registered"
         )
 
     hashed_password = hash_password(
@@ -87,7 +88,7 @@ def login(
     if not user:
         raise HTTPException(
             status_code=401,
-            detail="Credenciales incorrectas"
+            detail="Invalid credentials"
         )
 
     if not verify_password(
@@ -96,13 +97,13 @@ def login(
     ):
         raise HTTPException(
             status_code=401,
-            detail="Credenciales incorrectas"
+            detail="Invalid credentials"
         )
 
     if not user.is_active:
         raise HTTPException(
             status_code=403,
-            detail="El usuario está inactivo"
+            detail="User is inactive"
         )
 
     access_token = create_access_token(
@@ -111,8 +112,15 @@ def login(
         }
     )
 
+    refresh_token = create_refresh_token(
+        data={
+            "sub": str(user.id)
+        }
+    )
+
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer"
     }
 
