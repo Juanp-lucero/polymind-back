@@ -7,6 +7,7 @@ from app.core.security import (
     verify_password,
     create_access_token
 )
+from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.user import (
     UserCreate,
@@ -52,7 +53,9 @@ def register(
             detail="El correo electrónico ya está registrado"
         )
 
-    hashed_password = hash_password(user_data.password)
+    hashed_password = hash_password(
+        user_data.password
+    )
 
     new_user = User(
         name=user_data.name,
@@ -112,3 +115,13 @@ def login(
         "access_token": access_token,
         "token_type": "bearer"
     }
+
+
+@router.get(
+    "/me",
+    response_model=UserResponse
+)
+def get_me(
+    current_user: User = Depends(get_current_user)
+):
+    return current_user
