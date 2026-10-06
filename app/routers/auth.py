@@ -1,12 +1,15 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from jose import JWTError, jwt
 
 from app.core.database import SessionLocal
 from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
-    create_refresh_token
+    create_refresh_token,
+    SECRET_KEY,
+    ALGORITHM
 )
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -14,7 +17,8 @@ from app.schemas.user import (
     UserCreate,
     UserResponse,
     UserLogin,
-    TokenResponse
+    TokenResponse,
+    RefreshTokenRequest
 )
 
 
@@ -121,6 +125,79 @@ def login(
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse
+)
+def refresh_access_token(
+    token_data: RefreshTokenRequest,
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt.decode(
+            token_data.refresh_token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        user_id = payload.get("sub")
+        token_type = payload.get("type")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token"
+            )
+
+        if token_type != "refresh":
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token type"
+            )
+
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired refresh token"
+        )
+
+    user = (
+        db.query(User)
+        .filter(User.id == int(user_id))
+        .first()
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found"
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="User is inactive"
+        )
+
+    new_access_token = create_access_token(
+        data={
+            "sub": str(user.id)
+        }
+    )
+
+    new_refresh_token = create_refresh_token(
+        data={
+            "sub": str(user.id)
+        }
+    )
+
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
         "token_type": "bearer"
     }
 
