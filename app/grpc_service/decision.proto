@@ -1,4 +1,5 @@
-﻿syntax = "proto3";
+﻿
+syntax = "proto3";
 
 package polymind;
 
@@ -14,9 +15,33 @@ message DecisionRequest {
     repeated string alternatives = 5;
 }
 
+message AlternativeEvaluation {
+    string alternative = 1;
+    double score = 2;
+    string justification = 3;
+}
+
+message AgentResult {
+    string agent = 1;
+    string analysis = 2;
+    repeated string recommendations = 3;
+    repeated string observations = 4;
+    repeated AlternativeEvaluation alternative_evaluations = 5;
+}
+
+message AlternativeComparison {
+    string alternative = 1;
+    map<string, double> criteria = 2;
+    double weighted_score = 3;
+}
+
 message DecisionResponse {
     int32 decision_id = 1;
     string status = 2;
     string analysis = 3;
     repeated string recommendations = 4;
+
+    repeated AgentResult agent_results = 5;
+    repeated AlternativeComparison alternative_comparison = 6;
+    map<string, double> weights = 7;
 }
