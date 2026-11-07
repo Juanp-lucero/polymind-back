@@ -13,10 +13,16 @@ from app.schemas.decision import (
     DecisionResponse
 )
 
-from app.schemas.analysis import AnalysisResponse
+from app.schemas.analysis import (
+    AnalysisResponse,
+    AnalysisDetailResponse
+)
 
-from app.services import decision_service
-from app.services import analysis_service
+from app.services import (
+    decision_service,
+    analysis_service,
+    analysis_detail_service
+)
 
 from app.grpc_service.grpc_client import analyze_decision
 
@@ -27,29 +33,23 @@ router = APIRouter(
 )
 
 
-# ==========================================
 # CREAR DECISION
-# ==========================================
-
-@router.post("/", response_model=DecisionResponse, status_code=201)
-def create_new_decision(
-    decision_data: DecisionCreate,
+@router.post("/", response_model=DecisionResponse)
+def create_decision(
+    data: DecisionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     return decision_service.create_decision(
         db,
-        decision_data,
-        current_user.id
+        current_user.id,
+        data
     )
 
 
-# ==========================================
-# LISTAR DECISIONES
-# ==========================================
-
+# LISTAR DECISIONES DEL USUARIO
 @router.get("/", response_model=list[DecisionResponse])
-def list_decisions(
+def get_decisions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -59,10 +59,7 @@ def list_decisions(
     )
 
 
-# ==========================================
-# OBTENER UNA DECISION
-# ==========================================
-
+# CONSULTAR UNA DECISION
 @router.get("/{decision_id}", response_model=DecisionResponse)
 def get_decision(
     decision_id: int,
@@ -75,25 +72,45 @@ def get_decision(
         current_user.id
     )
 
-    if decision is None:
+    if not decision:
         raise HTTPException(
             status_code=404,
-            detail="Decision not found"
+            detail="Decisión no encontrada"
         )
 
     return decision
 
 
-# ==========================================
-# ANALIZAR DECISION MEDIANTE gRPC
-# Y GUARDAR RESULTADO EN POSTGRESQL
-# ==========================================
+# ACTUALIZAR DECISION
+@router.put("/{decision_id}", response_model=DecisionResponse)
+def update_decision(
+    decision_id: int,
+    data: DecisionUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    decision = decision_service.get_decision_by_id(
+        db,
+        decision_id,
+        current_user.id
+    )
 
-@router.post(
-    "/{decision_id}/analyze",
-    response_model=AnalysisResponse
-)
-def analyze_existing_decision(
+    if not decision:
+        raise HTTPException(
+            status_code=404,
+            detail="Decisión no encontrada"
+        )
+
+    return decision_service.update_decision(
+        db,
+        decision,
+        data
+    )
+
+
+# ELIMINAR DECISION
+@router.delete("/{decision_id}")
+def delete_decision(
     decision_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -104,19 +121,49 @@ def analyze_existing_decision(
         current_user.id
     )
 
-    if decision is None:
+    if not decision:
         raise HTTPException(
             status_code=404,
-            detail="Decision not found"
+            detail="Decisión no encontrada"
+        )
+
+    decision_service.delete_decision(db, decision)
+
+    return {
+        "message": "Decisión eliminada correctamente"
+    }
+
+
+# EJECUTAR ANALISIS MULTIAGENTE
+@router.post(
+    "/{decision_id}/analyze",
+    response_model=AnalysisResponse
+)
+def analyze_user_decision(
+    decision_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    decision = decision_service.get_decision_by_id(
+        db,
+        decision_id,
+        current_user.id
+    )
+
+    if not decision:
+        raise HTTPException(
+            status_code=404,
+            detail="Decisión no encontrada"
         )
 
     if not decision.alternatives:
         raise HTTPException(
-            status_code=422,
-            detail="At least one alternative is required"
+            status_code=400,
+            detail="La decisión debe tener al menos una alternativa"
         )
 
     try:
+        # Ejecutar análisis mediante gRPC
         result = analyze_decision(
             decision_id=decision.id,
             title=decision.title,
@@ -125,40 +172,49 @@ def analyze_existing_decision(
             alternatives=decision.alternatives
         )
 
-    except grpc.RpcError:
-        raise HTTPException(
-            status_code=503,
-            detail="The gRPC analysis service is unavailable"
-        )
-
-    try:
+        # Guardar el informe principal
         saved_analysis = analysis_service.create_analysis(
             db=db,
             decision_id=decision.id,
-            analysis_text=result.analysis,
-            recommendations=list(result.recommendations),
-            status="completed"
+            analysis_text=result["analysis"],
+            recommendations=result["recommendations"],
+            status=result["status"]
+        )
+
+        # Guardar los resultados detallados de los agentes
+        analysis_detail_service.create_analysis_detail(
+            db=db,
+            analysis_id=saved_analysis.id,
+            agent_results=result["agent_results"],
+            alternative_comparison=result["alternative_comparison"],
+            weights=result["weights"]
         )
 
         return saved_analysis
 
-    except Exception:
+    except grpc.RpcError as error:
         db.rollback()
+
+        raise HTTPException(
+            status_code=503,
+            detail=f"Error en el servicio gRPC: {error.details()}"
+        )
+
+    except Exception as error:
+        db.rollback()
+
         raise HTTPException(
             status_code=500,
-            detail="Could not save the analysis"
+            detail=f"Error al guardar el análisis: {str(error)}"
         )
 
 
-# ==========================================
 # CONSULTAR HISTORIAL DE ANALISIS
-# ==========================================
-
 @router.get(
     "/{decision_id}/analyses",
     response_model=list[AnalysisResponse]
 )
-def get_decision_analysis_history(
+def get_analyses(
     decision_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -169,26 +225,26 @@ def get_decision_analysis_history(
         current_user.id
     )
 
-    if decision is None:
+    if not decision:
         raise HTTPException(
             status_code=404,
-            detail="Decision not found"
+            detail="Decisión no encontrada"
         )
 
     return analysis_service.get_decision_analyses(
         db,
-        decision.id
+        decision_id
     )
 
 
-# ==========================================
-# ACTUALIZAR DECISION
-# ==========================================
-
-@router.put("/{decision_id}", response_model=DecisionResponse)
-def update_existing_decision(
+# CONSULTAR DETALLES DE UN ANALISIS
+@router.get(
+    "/{decision_id}/analyses/{analysis_id}/details",
+    response_model=AnalysisDetailResponse
+)
+def get_analysis_details(
     decision_id: int,
-    decision_data: DecisionUpdate,
+    analysis_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -198,41 +254,33 @@ def update_existing_decision(
         current_user.id
     )
 
-    if decision is None:
+    if not decision:
         raise HTTPException(
             status_code=404,
-            detail="Decision not found"
+            detail="Decisión no encontrada"
         )
 
-    return decision_service.update_decision(
+    analysis = analysis_service.get_analysis_by_id(
         db,
-        decision,
-        decision_data
+        analysis_id,
+        decision_id
     )
 
-
-# ==========================================
-# ELIMINAR DECISION
-# ==========================================
-
-@router.delete("/{decision_id}", status_code=204)
-def delete_existing_decision(
-    decision_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    decision = decision_service.get_decision_by_id(
-        db,
-        decision_id,
-        current_user.id
-    )
-
-    if decision is None:
+    if not analysis:
         raise HTTPException(
             status_code=404,
-            detail="Decision not found"
+            detail="Análisis no encontrado"
         )
 
-    decision_service.delete_decision(db, decision)
+    detail = analysis_detail_service.get_analysis_detail(
+        db,
+        analysis_id
+    )
 
-    return None
+    if not detail:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron detalles del análisis"
+        )
+
+    return detail

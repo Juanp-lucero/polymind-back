@@ -1,4 +1,5 @@
-﻿import grpc
+﻿
+import grpc
 
 from app.grpc_service import decision_pb2
 from app.grpc_service import decision_pb2_grpc
@@ -19,37 +20,45 @@ def analyze_decision(
             decision_id=decision_id,
             title=title,
             description=description,
-            context=context,
+            context=context or "",
             alternatives=alternatives
         )
 
-        response = stub.AnalyzeDecision(
-            request,
-            timeout=10
-        )
+        response = stub.AnalyzeDecision(request, timeout=10)
 
-        return response
+        return {
+            "decision_id": response.decision_id,
+            "status": response.status,
+            "analysis": response.analysis,
+            "recommendations": list(response.recommendations),
 
+            "agent_results": [
+                {
+                    "agent": agent.agent,
+                    "analysis": agent.analysis,
+                    "recommendations": list(agent.recommendations),
+                    "observations": list(agent.observations),
 
-if __name__ == "__main__":
+                    "alternative_evaluations": [
+                        {
+                            "alternative": evaluation.alternative,
+                            "score": evaluation.score,
+                            "justification": evaluation.justification
+                        }
+                        for evaluation in agent.alternative_evaluations
+                    ]
+                }
+                for agent in response.agent_results
+            ],
 
-    result = analyze_decision(
-        decision_id=1,
-        title="Implementar una tienda virtual",
-        description="Evaluar el desarrollo de una plataforma de comercio electrónico.",
-        context="Una empresa quiere ampliar sus ventas mediante internet.",
-        alternatives=[
-            "Desarrollar una plataforma propia",
-            "Contratar una plataforma comercial",
-            "Utilizar una solución de código abierto"
-        ]
-    )
+            "alternative_comparison": [
+                {
+                    "alternative": comparison.alternative,
+                    "criteria": dict(comparison.criteria),
+                    "weighted_score": comparison.weighted_score
+                }
+                for comparison in response.alternative_comparison
+            ],
 
-    print("\n===== POLYMIND IA - RESPUESTA gRPC =====")
-    print("ID de decisión:", result.decision_id)
-    print("Estado:", result.status)
-    print("Análisis:", result.analysis)
-    print("Recomendaciones:")
-
-    for recommendation in result.recommendations:
-        print("-", recommendation)
+            "weights": dict(response.weights)
+        }
