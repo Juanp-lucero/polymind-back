@@ -23,7 +23,10 @@ def analyze_decision(
             alternatives=alternatives
         )
 
-        response = stub.AnalyzeDecision(request)
+        response = stub.AnalyzeDecision(
+            request,
+            timeout=10
+        )
 
         return response
 

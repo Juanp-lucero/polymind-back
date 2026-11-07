@@ -5,7 +5,7 @@ from app.models.user import User
 from app.models.decision import Decision
 from app.routers.auth import router as auth_router
 from app.routers.decisions import router as decisions_router
-
+from app.models.analysis import Analysis
 
 Base.metadata.create_all(bind=engine)
 
