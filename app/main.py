@@ -2,7 +2,9 @@
 
 from app.core.database import Base, engine
 from app.models.user import User
+from app.models.decision import Decision
 from app.routers.auth import router as auth_router
+from app.routers.decisions import router as decisions_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -16,6 +18,7 @@ app = FastAPI(
 
 
 app.include_router(auth_router)
+app.include_router(decisions_router)
 
 
 @app.get("/")
