@@ -11,8 +11,7 @@ class BaseAgent(ABC):
     @abstractmethod
     def analyze(self, decision: dict) -> dict:
         """
-        Cada agente debe implementar
-        su propio proceso de análisis.
+        Cada agente implementa su propio análisis.
         """
         pass
 
@@ -20,12 +19,14 @@ class BaseAgent(ABC):
         self,
         analysis: str,
         recommendations: list[str],
-        observations: list[str] | None = None
+        observations: list[str] | None = None,
+        alternative_evaluations: list[dict] | None = None
     ) -> dict:
 
         return {
             "agent": self.name,
             "analysis": analysis,
             "recommendations": recommendations,
-            "observations": observations or []
+            "observations": observations or [],
+            "alternative_evaluations": alternative_evaluations or []
         }
