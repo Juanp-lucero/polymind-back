@@ -1,14 +1,19 @@
-﻿from concurrent import futures
+﻿
+from concurrent import futures
 
 import grpc
 
 from app.grpc_service import decision_pb2
 from app.grpc_service import decision_pb2_grpc
+from app.agents.orchestrator import Orchestrator
 
 
 class DecisionAnalyzerService(
     decision_pb2_grpc.DecisionAnalyzerServicer
 ):
+
+    def __init__(self):
+        self.orchestrator = Orchestrator()
 
     def AnalyzeDecision(self, request, context):
 
@@ -30,27 +35,36 @@ class DecisionAnalyzerService(
                 "At least one alternative is required"
             )
 
-        analysis = (
-            f"Decision received: {request.title}. "
-            f"Description: {request.description}. "
-            f"Context: {request.context}. "
-            f"Number of alternatives: {len(request.alternatives)}."
-        )
+        decision = {
+            "title": request.title,
+            "description": request.description,
+            "context": request.context,
+            "alternatives": list(request.alternatives)
+        }
 
-        recommendations = [
-            f"Evaluate the advantages and disadvantages of: {alternative}"
-            for alternative in request.alternatives
-        ]
+        try:
+            result = self.orchestrator.analyze_decision(decision)
 
-        return decision_pb2.DecisionResponse(
-            decision_id=request.decision_id,
-            status="analyzed",
-            analysis=analysis,
-            recommendations=recommendations
-        )
+            final_report = result["final_report"]
+
+            return decision_pb2.DecisionResponse(
+                decision_id=request.decision_id,
+                status=result["status"],
+                analysis=final_report["analysis"],
+                recommendations=final_report["recommendations"]
+            )
+
+        except Exception as error:
+            print(f"Error during multi-agent analysis: {error}")
+
+            context.abort(
+                grpc.StatusCode.INTERNAL,
+                "An error occurred during multi-agent analysis"
+            )
 
 
 def serve():
+
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10)
     )
@@ -60,11 +74,14 @@ def serve():
         server
     )
 
-    server.add_insecure_port("0.0.0.0:50051")
+    port = server.add_insecure_port("0.0.0.0:50051")
+
+    if port == 0:
+        raise RuntimeError("Could not bind gRPC server to port 50051")
 
     server.start()
 
-    print("Polymind IA gRPC Server running on port 50051")
+    print("Polymind IA Multi-Agent gRPC Server running on port 50051")
 
     server.wait_for_termination()
 
