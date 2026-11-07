@@ -1,0 +1,22 @@
+﻿syntax = "proto3";
+
+package polymind;
+
+service DecisionAnalyzer {
+    rpc AnalyzeDecision (DecisionRequest) returns (DecisionResponse);
+}
+
+message DecisionRequest {
+    int32 decision_id = 1;
+    string title = 2;
+    string description = 3;
+    string context = 4;
+    repeated string alternatives = 5;
+}
+
+message DecisionResponse {
+    int32 decision_id = 1;
+    string status = 2;
+    string analysis = 3;
+    repeated string recommendations = 4;
+}
