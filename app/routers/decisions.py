@@ -127,7 +127,10 @@ def delete_decision(
             detail="Decisión no encontrada"
         )
 
-    decision_service.delete_decision(db, decision)
+    decision_service.delete_decision(
+        db,
+        decision
+    )
 
     return {
         "message": "Decisión eliminada correctamente"
@@ -163,6 +166,7 @@ def analyze_user_decision(
         )
 
     try:
+        # Ejecutar análisis mediante gRPC
         result = analyze_decision(
             decision_id=decision.id,
             title=decision.title,
@@ -171,21 +175,29 @@ def analyze_user_decision(
             alternatives=decision.alternatives
         )
 
+        # Crear informe principal sin hacer commit
         saved_analysis = analysis_service.create_analysis(
             db=db,
             decision_id=decision.id,
             analysis_text=result["analysis"],
             recommendations=result["recommendations"],
-            status=result["status"]
+            status=result["status"],
+            commit=False
         )
 
+        # Crear detalles sin hacer commit
         analysis_detail_service.create_analysis_detail(
             db=db,
             analysis_id=saved_analysis.id,
             agent_results=result["agent_results"],
             alternative_comparison=result["alternative_comparison"],
-            weights=result["weights"]
+            weights=result["weights"],
+            commit=False
         )
+
+        # Confirmar ambas operaciones en una sola transacción
+        db.commit()
+        db.refresh(saved_analysis)
 
         return saved_analysis
 

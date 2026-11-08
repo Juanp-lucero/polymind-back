@@ -9,7 +9,8 @@ def create_analysis_detail(
     analysis_id: int,
     agent_results: list[dict],
     alternative_comparison: list[dict],
-    weights: dict
+    weights: dict,
+    commit: bool = True
 ):
     new_detail = AnalysisDetail(
         analysis_id=analysis_id,
@@ -19,8 +20,12 @@ def create_analysis_detail(
     )
 
     db.add(new_detail)
-    db.commit()
+    db.flush()
     db.refresh(new_detail)
+
+    if commit:
+        db.commit()
+        db.refresh(new_detail)
 
     return new_detail
 

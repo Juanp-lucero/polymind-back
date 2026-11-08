@@ -1,3 +1,4 @@
+
 from sqlalchemy.orm import Session
 
 from app.models.analysis import Analysis
@@ -8,7 +9,8 @@ def create_analysis(
     decision_id: int,
     analysis_text: str,
     recommendations: list[str],
-    status: str
+    status: str = "completed",
+    commit: bool = True
 ):
     new_analysis = Analysis(
         decision_id=decision_id,
@@ -18,8 +20,12 @@ def create_analysis(
     )
 
     db.add(new_analysis)
-    db.commit()
+    db.flush()
     db.refresh(new_analysis)
+
+    if commit:
+        db.commit()
+        db.refresh(new_analysis)
 
     return new_analysis
 
