@@ -42,12 +42,12 @@ def create_decision(
 ):
     return decision_service.create_decision(
         db,
-        current_user.id,
-        data
+        data,
+        current_user.id
     )
 
 
-# LISTAR DECISIONES DEL USUARIO
+# LISTAR DECISIONES
 @router.get("/", response_model=list[DecisionResponse])
 def get_decisions(
     db: Session = Depends(get_db),
@@ -163,7 +163,6 @@ def analyze_user_decision(
         )
 
     try:
-        # Ejecutar análisis mediante gRPC
         result = analyze_decision(
             decision_id=decision.id,
             title=decision.title,
@@ -172,7 +171,6 @@ def analyze_user_decision(
             alternatives=decision.alternatives
         )
 
-        # Guardar el informe principal
         saved_analysis = analysis_service.create_analysis(
             db=db,
             decision_id=decision.id,
@@ -181,7 +179,6 @@ def analyze_user_decision(
             status=result["status"]
         )
 
-        # Guardar los resultados detallados de los agentes
         analysis_detail_service.create_analysis_detail(
             db=db,
             analysis_id=saved_analysis.id,
