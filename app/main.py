@@ -13,7 +13,7 @@ from app.models.analysis_detail import AnalysisDetail
 # Importar routers
 from app.routers.auth import router as auth_router
 from app.routers.decisions import router as decisions_router
-
+from app.routers.stats import router as stats_router
 
 # Crear las tablas de la base de datos
 Base.metadata.create_all(bind=engine)
@@ -46,7 +46,7 @@ app.add_middleware(
 # Registrar rutas
 app.include_router(auth_router)
 app.include_router(decisions_router)
-
+app.include_router(stats_router)
 
 # Ruta principal
 @app.get("/")
