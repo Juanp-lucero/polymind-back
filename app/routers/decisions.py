@@ -15,7 +15,8 @@ from app.schemas.decision import (
 
 from app.schemas.analysis import (
     AnalysisResponse,
-    AnalysisDetailResponse
+    AnalysisDetailResponse,
+    CompleteAnalysisResponse
 )
 
 from app.services import (
@@ -33,7 +34,10 @@ router = APIRouter(
 )
 
 
+# ==========================================
 # CREAR DECISION
+# ==========================================
+
 @router.post("/", response_model=DecisionResponse)
 def create_decision(
     data: DecisionCreate,
@@ -47,7 +51,10 @@ def create_decision(
     )
 
 
-# LISTAR DECISIONES
+# ==========================================
+# LISTAR DECISIONES DEL USUARIO
+# ==========================================
+
 @router.get("/", response_model=list[DecisionResponse])
 def get_decisions(
     db: Session = Depends(get_db),
@@ -59,7 +66,10 @@ def get_decisions(
     )
 
 
+# ==========================================
 # CONSULTAR UNA DECISION
+# ==========================================
+
 @router.get("/{decision_id}", response_model=DecisionResponse)
 def get_decision(
     decision_id: int,
@@ -81,7 +91,10 @@ def get_decision(
     return decision
 
 
+# ==========================================
 # ACTUALIZAR DECISION
+# ==========================================
+
 @router.put("/{decision_id}", response_model=DecisionResponse)
 def update_decision(
     decision_id: int,
@@ -108,7 +121,10 @@ def update_decision(
     )
 
 
+# ==========================================
 # ELIMINAR DECISION
+# ==========================================
+
 @router.delete("/{decision_id}")
 def delete_decision(
     decision_id: int,
@@ -137,7 +153,10 @@ def delete_decision(
     }
 
 
+# ==========================================
 # EJECUTAR ANALISIS MULTIAGENTE
+# ==========================================
+
 @router.post(
     "/{decision_id}/analyze",
     response_model=AnalysisResponse
@@ -175,7 +194,7 @@ def analyze_user_decision(
             alternatives=decision.alternatives
         )
 
-        # Crear informe principal sin hacer commit
+        # Crear informe principal sin confirmar todavía
         saved_analysis = analysis_service.create_analysis(
             db=db,
             decision_id=decision.id,
@@ -185,7 +204,7 @@ def analyze_user_decision(
             commit=False
         )
 
-        # Crear detalles sin hacer commit
+        # Guardar resultados individuales de los agentes
         analysis_detail_service.create_analysis_detail(
             db=db,
             analysis_id=saved_analysis.id,
@@ -218,7 +237,10 @@ def analyze_user_decision(
         )
 
 
+# ==========================================
 # CONSULTAR HISTORIAL DE ANALISIS
+# ==========================================
+
 @router.get(
     "/{decision_id}/analyses",
     response_model=list[AnalysisResponse]
@@ -246,7 +268,10 @@ def get_analyses(
     )
 
 
+# ==========================================
 # CONSULTAR DETALLES DE UN ANALISIS
+# ==========================================
+
 @router.get(
     "/{decision_id}/analyses/{analysis_id}/details",
     response_model=AnalysisDetailResponse
@@ -293,3 +318,65 @@ def get_analysis_details(
         )
 
     return detail
+
+
+# ==========================================
+# CONSULTAR ANALISIS COMPLETO
+# ==========================================
+
+@router.get(
+    "/{decision_id}/analyses/{analysis_id}/complete",
+    response_model=CompleteAnalysisResponse
+)
+def get_complete_analysis(
+    decision_id: int,
+    analysis_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    decision = decision_service.get_decision_by_id(
+        db,
+        decision_id,
+        current_user.id
+    )
+
+    if not decision:
+        raise HTTPException(
+            status_code=404,
+            detail="Decisión no encontrada"
+        )
+
+    analysis = analysis_service.get_analysis_by_id(
+        db,
+        analysis_id,
+        decision_id
+    )
+
+    if not analysis:
+        raise HTTPException(
+            status_code=404,
+            detail="Análisis no encontrado"
+        )
+
+    detail = analysis_detail_service.get_analysis_detail(
+        db,
+        analysis_id
+    )
+
+    if not detail:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron detalles del análisis"
+        )
+
+    return {
+        "id": analysis.id,
+        "decision_id": analysis.decision_id,
+        "analysis": analysis.analysis,
+        "recommendations": analysis.recommendations,
+        "status": analysis.status,
+        "created_at": analysis.created_at,
+        "agent_results": detail.agent_results,
+        "alternative_comparison": detail.alternative_comparison,
+        "weights": detail.weights
+    }

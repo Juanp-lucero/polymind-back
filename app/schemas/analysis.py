@@ -24,3 +24,18 @@ class AnalysisDetailResponse(BaseModel):
     created_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CompleteAnalysisResponse(BaseModel):
+    id: int
+    decision_id: int
+    analysis: str
+    recommendations: list[str]
+    status: str
+    created_at: datetime | None
+
+    agent_results: list[dict]
+    alternative_comparison: list[dict]
+    weights: dict
+
+    model_config = ConfigDict(from_attributes=True)
