@@ -1,5 +1,5 @@
-
 from app.agents.base_agent import BaseAgent
+from app.services.groq_service import generate_ai_report
 
 
 class AnalystAgent(BaseAgent):
@@ -18,7 +18,6 @@ class AnalystAgent(BaseAgent):
         }
 
     def analyze(self, decision: dict) -> dict:
-
         return self.create_response(
             analysis="El analista necesita las evaluaciones de los agentes especializados.",
             recommendations=[
@@ -32,7 +31,6 @@ class AnalystAgent(BaseAgent):
         decision: dict,
         agent_results: list[dict]
     ) -> dict:
-
         alternatives = decision.get("alternatives", [])
 
         if not alternatives or not agent_results:
@@ -43,11 +41,8 @@ class AnalystAgent(BaseAgent):
             )
 
         agent_scores = {}
-
         for result in agent_results:
-
             agent_name = result.get("agent")
-
             if agent_name not in self.weights:
                 continue
 
@@ -55,36 +50,29 @@ class AnalystAgent(BaseAgent):
                 item["alternative"]: item["score"]
                 for item in result.get("alternative_evaluations", [])
             }
-
             agent_scores[agent_name] = evaluations
 
         missing_agents = [
-            name for name in self.weights
-            if name not in agent_scores
+            name for name in self.weights if name not in agent_scores
         ]
-
         if missing_agents:
-            raise ValueError(
-                f"Missing agent evaluations: {missing_agents}"
-            )
+            raise ValueError(f"Missing agent evaluations: {missing_agents}")
 
         comparison = []
-
         for alternative in alternatives:
-
             weighted_score = 0
             criteria = {}
 
             for agent_name, weight in self.weights.items():
-
                 score = agent_scores[agent_name].get(alternative)
-
                 if score is None:
                     raise ValueError(
                         f"Missing score for {alternative} from {agent_name}"
                     )
-
-                if not isinstance(score, (int, float)) or not 1 <= score <= 10:
+                if (
+                    not isinstance(score, (int, float))
+                    or not 1 <= score <= 10
+                ):
                     raise ValueError(
                         f"Invalid score for {alternative} from {agent_name}"
                     )
@@ -102,7 +90,6 @@ class AnalystAgent(BaseAgent):
             key=lambda item: item["weighted_score"],
             reverse=True
         )
-
         winner = comparison[0]
 
         recommendations = [
@@ -113,11 +100,12 @@ class AnalystAgent(BaseAgent):
             for item in comparison
         ]
 
-        final_analysis = (
+        # Informe local de respaldo: nunca dependemos de que Groq esté disponible.
+        fallback_analysis = (
             f"INFORME COMPARATIVO DE POLYMIND IA\n\n"
             f"Decisión evaluada: {decision.get('title')}\n\n"
-            f"Se evaluaron {len(alternatives)} alternativas "
-            f"mediante cuatro criterios especializados.\n\n"
+            f"Se evaluaron {len(alternatives)} alternativas mediante "
+            f"cuatro criterios especializados.\n\n"
             f"Ponderaciones utilizadas:\n"
             f"- Financiero: 30%\n"
             f"- Tecnológico: 30%\n"
@@ -127,18 +115,38 @@ class AnalystAgent(BaseAgent):
             f"{winner['alternative']}\n"
             f"Puntuación: {winner['weighted_score']}/10.\n\n"
             f"La alternativa seleccionada obtuvo la mayor puntuación "
-            f"ponderada según las evaluaciones recibidas. "
-            f"Esta recomendación es preliminar y depende de la calidad "
-            f"de los datos proporcionados."
+            f"ponderada según las evaluaciones recibidas. Esta recomendación "
+            f"es preliminar y depende de la calidad de los datos proporcionados."
         )
+
+        report_source = "local"
+        final_analysis = fallback_analysis
+
+        try:
+            ai_report = generate_ai_report(
+                decision=decision,
+                agent_results=agent_results,
+                comparison=comparison
+            )
+            if ai_report:
+                final_analysis = ai_report
+                report_source = "groq"
+        except Exception:
+            # Un fallo externo de IA no debe impedir guardar el análisis.
+            import logging
+            logging.getLogger(__name__).exception(
+                "No fue posible generar el informe con Groq; "
+                "se conservará el informe local."
+            )
 
         return self.create_response(
             analysis=final_analysis,
             recommendations=recommendations,
             observations=[
-                "Las puntuaciones provienen de reglas heurísticas.",
+                "Las puntuaciones provienen de los agentes especializados y sus reglas de evaluación.",
                 "Los pesos representan criterios definidos para el proyecto.",
-                "La alternativa mejor calificada no representa una garantía de éxito."
+                "La alternativa mejor calificada no representa una garantía de éxito.",
+                f"Informe narrativo generado por: {report_source}."
             ],
             alternative_evaluations=comparison
         )
