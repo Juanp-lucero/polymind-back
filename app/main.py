@@ -1,4 +1,6 @@
 ﻿
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -28,9 +30,14 @@ app = FastAPI(
 
 
 # Configuración CORS
+# CORS_ORIGINS: orígenes permitidos separados por coma (p. ej. la URL del front en Vercel)
 origins = [
-    "http://localhost:4200",
-    "http://127.0.0.1:4200"
+    origin.strip().rstrip("/")
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:4200,http://127.0.0.1:4200"
+    ).split(",")
+    if origin.strip()
 ]
 
 
