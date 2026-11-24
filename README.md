@@ -2,6 +2,17 @@
 
 Backend de la plataforma multiagente Polymind IA, construido con FastAPI, SQLAlchemy y gRPC.
 
+## Despliegue
+
+Desplegado en Vercel:
+
+| | URL | Repositorio |
+|---|---|---|
+| Aplicación (frontend) | https://polymind-front.vercel.app | [Juanp-lucero/polymind-front](https://github.com/Juanp-lucero/polymind-front) |
+| API (backend) | https://polymind-back.vercel.app | [Juanp-lucero/polymind-back](https://github.com/Juanp-lucero/polymind-back) |
+| Estado de la API | https://polymind-back.vercel.app/health | |
+| Documentación de la API | https://polymind-back.vercel.app/docs | |
+
 ## Requisitos
 
 - Python 3.10 o superior
