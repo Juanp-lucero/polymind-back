@@ -26,6 +26,31 @@ class AnalystAgent(BaseAgent):
             observations=["No se recibieron evaluaciones."]
         )
 
+    #: Diferencia mínima entre agentes para considerarla un desacuerdo.
+    DISAGREEMENT_THRESHOLD = 4
+
+    def find_disagreements(self, comparison: list[dict]) -> dict[str, str]:
+        """
+        Señala las alternativas en las que los agentes discrepan mucho.
+
+        Un desacuerdo grande indica que la alternativa tiene ventajas
+        claras en un criterio y debilidades claras en otro, algo que el
+        promedio ponderado por sí solo oculta.
+        """
+        disagreements = {}
+        for item in comparison:
+            criteria = item["criteria"]
+            best = max(criteria, key=criteria.get)
+            worst = min(criteria, key=criteria.get)
+            spread = criteria[best] - criteria[worst]
+            if spread >= self.DISAGREEMENT_THRESHOLD:
+                disagreements[item["alternative"]] = (
+                    f"{item['alternative']}: {best} la califica con "
+                    f"{criteria[best]:g}/10, pero {worst} con "
+                    f"{criteria[worst]:g}/10."
+                )
+        return disagreements
+
     def generate_report(
         self,
         decision: dict,
@@ -92,6 +117,12 @@ class AnalystAgent(BaseAgent):
         )
         winner = comparison[0]
 
+        disagreements = self.find_disagreements(comparison)
+        for item in comparison:
+            item["agent_disagreement"] = disagreements.get(
+                item["alternative"]
+            )
+
         recommendations = [
             (
                 f"{item['alternative']}: "
@@ -119,6 +150,12 @@ class AnalystAgent(BaseAgent):
             f"es preliminar y depende de la calidad de los datos proporcionados."
         )
 
+        if disagreements:
+            fallback_analysis += (
+                "\n\nDESACUERDOS ENTRE AGENTES:\n"
+                + "\n".join(f"- {text}" for text in disagreements.values())
+            )
+
         report_source = "local"
         final_analysis = fallback_analysis
 
@@ -143,7 +180,11 @@ class AnalystAgent(BaseAgent):
             analysis=final_analysis,
             recommendations=recommendations,
             observations=[
-                "Las puntuaciones provienen de los agentes especializados y sus reglas de evaluación.",
+                *[
+                    f"Desacuerdo: {text}"
+                    for text in disagreements.values()
+                ],
+                "Las puntuaciones provienen de los agentes especializados (IA validada o reglas, según cada agente).",
                 "Los pesos representan criterios definidos para el proyecto.",
                 "La alternativa mejor calificada no representa una garantía de éxito.",
                 f"Informe narrativo generado por: {report_source}."
