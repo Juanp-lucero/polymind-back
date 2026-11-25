@@ -51,6 +51,32 @@ class AnalystAgent(BaseAgent):
                 )
         return disagreements
 
+    #: Longitud mínima de la descripción para considerarla suficiente.
+    MIN_DESCRIPTION_LENGTH = 60
+
+    def find_information_gaps(self, decision: dict) -> list[str]:
+        """Detecta cuándo la decisión tiene muy poco contexto para evaluarla."""
+        gaps = []
+        description = (decision.get("description") or "").strip()
+        context = (decision.get("context") or "").strip()
+
+        if len(description) < self.MIN_DESCRIPTION_LENGTH:
+            gaps.append(
+                "La descripción es breve; agregar objetivos, alcance y "
+                "restricciones haría la evaluación más precisa."
+            )
+        if not context:
+            gaps.append(
+                "No se indicó contexto (presupuesto, plazos, equipo o "
+                "infraestructura actual); las puntuaciones son más inciertas."
+            )
+        if len(decision.get("alternatives") or []) < 2:
+            gaps.append(
+                "Solo hay una alternativa; compararla con otra opción "
+                "permitiría una recomendación más útil."
+            )
+        return gaps
+
     def generate_report(
         self,
         decision: dict,
@@ -117,6 +143,8 @@ class AnalystAgent(BaseAgent):
         )
         winner = comparison[0]
 
+        information_gaps = self.find_information_gaps(decision)
+
         disagreements = self.find_disagreements(comparison)
         for item in comparison:
             item["agent_disagreement"] = disagreements.get(
@@ -150,6 +178,12 @@ class AnalystAgent(BaseAgent):
             f"es preliminar y depende de la calidad de los datos proporcionados."
         )
 
+        if information_gaps:
+            fallback_analysis += (
+                "\n\nLIMITACIONES DE LA INFORMACIÓN:\n"
+                + "\n".join(f"- {gap}" for gap in information_gaps)
+            )
+
         if disagreements:
             fallback_analysis += (
                 "\n\nDESACUERDOS ENTRE AGENTES:\n"
@@ -161,7 +195,7 @@ class AnalystAgent(BaseAgent):
 
         try:
             ai_report = generate_ai_report(
-                decision=decision,
+                decision={**decision, "information_gaps": information_gaps},
                 agent_results=agent_results,
                 comparison=comparison
             )
@@ -183,6 +217,10 @@ class AnalystAgent(BaseAgent):
                 *[
                     f"Desacuerdo: {text}"
                     for text in disagreements.values()
+                ],
+                *[
+                    f"Información insuficiente: {gap}"
+                    for gap in information_gaps
                 ],
                 "Las puntuaciones provienen de los agentes especializados (IA validada o reglas, según cada agente).",
                 "Los pesos representan criterios definidos para el proyecto.",

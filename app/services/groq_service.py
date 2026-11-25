@@ -79,6 +79,7 @@ def generate_ai_report(
             "description": decision.get("description", ""),
             "context": decision.get("context", ""),
             "alternatives": decision.get("alternatives", []),
+            "information_gaps": decision.get("information_gaps", []),
         },
         "specialist_evaluations": [
             {
