@@ -13,9 +13,19 @@ Desplegado en Vercel:
 | Estado de la API | https://polymind-back.vercel.app/health | |
 | Documentación de la API | https://polymind-back.vercel.app/docs | |
 
+## Cuenta de prueba
+
+Para revisar Polymind IA sin registrarse:
+
+| Aplicación | Correo | Contraseña |
+|---|---|---|
+| https://polymind-front.vercel.app | `profesor.demo@example.com` | `ProfeDemo2026*` |
+
+Es una cuenta de demostración creada solo para la evaluación; no contiene datos personales.
+
 ## Cómo probarlo
 
-1. Entra a https://polymind-front.vercel.app e inicia sesión con la cuenta de prueba (o crea una cuenta en **Crear cuenta**).
+1. Entra a https://polymind-front.vercel.app e inicia sesión con la [cuenta de prueba](#cuenta-de-prueba) (o crea una cuenta en **Crear cuenta**).
 2. **Decisiones → Nueva decisión**. Datos de ejemplo:
    - **Título de la decisión:** `Elegir plataforma para el sistema de inventario`
    - **Descripción del reto:** `La empresa necesita reemplazar su hoja de cálculo de inventario. Hay 15 usuarios, presupuesto anual de 20 millones de pesos y el equipo de TI tiene 2 personas con experiencia en Python.`
