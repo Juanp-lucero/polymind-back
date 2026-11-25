@@ -4,13 +4,17 @@ from app.agents.base_agent import BaseAgent
 
 class HumanImpactAgent(BaseAgent):
 
+    perspective = (
+        "Evalúas el impacto en las personas: usuarios, clientes y equipo de trabajo, necesidad de capacitación, resistencia al cambio, carga laboral, bienestar y consideraciones éticas y sociales."
+    )
+
     def __init__(self):
         super().__init__(
             name="Human Impact Agent",
             description="Evalúa las consecuencias humanas y sociales de las decisiones."
         )
 
-    def analyze(self, decision: dict) -> dict:
+    def rule_based_analyze(self, decision: dict) -> dict:
 
         title = decision.get("title", "")
         description = decision.get("description", "")
