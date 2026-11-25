@@ -4,13 +4,17 @@ from app.agents.base_agent import BaseAgent
 
 class TechnologyAgent(BaseAgent):
 
+    perspective = (
+        "Evalúas la viabilidad tecnológica: complejidad de implementación, infraestructura necesaria, escalabilidad, mantenimiento, compatibilidad con lo existente y capacidades técnicas que exige cada alternativa."
+    )
+
     def __init__(self):
         super().__init__(
             name="Technology Agent",
             description="Evalúa la viabilidad, infraestructura y escalabilidad tecnológica de las alternativas."
         )
 
-    def analyze(self, decision: dict) -> dict:
+    def rule_based_analyze(self, decision: dict) -> dict:
 
         title = decision.get("title", "")
         description = decision.get("description", "")
