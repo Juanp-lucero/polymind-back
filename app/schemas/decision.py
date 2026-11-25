@@ -1,7 +1,38 @@
 ﻿from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+MAX_ALTERNATIVES = 8
+MAX_ALTERNATIVE_LENGTH = 200
+
+
+def normalize_alternatives(values: list[str] | None) -> list[str] | None:
+    """Quita espacios, alternativas vacías y repetidas; limita su cantidad."""
+    if values is None:
+        return None
+
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        alternative = " ".join(str(value).split())
+        if not alternative:
+            continue
+        if len(alternative) > MAX_ALTERNATIVE_LENGTH:
+            raise ValueError(
+                f"Cada alternativa admite máximo {MAX_ALTERNATIVE_LENGTH} caracteres"
+            )
+        key = alternative.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(alternative)
+
+    if len(cleaned) > MAX_ALTERNATIVES:
+        raise ValueError(
+            f"Se permiten máximo {MAX_ALTERNATIVES} alternativas"
+        )
+    return cleaned
 
 
 class DecisionCreate(BaseModel):
@@ -9,6 +40,11 @@ class DecisionCreate(BaseModel):
     description: str = Field(min_length=10)
     context: Optional[str] = None
     alternatives: list[str] = Field(default_factory=list)
+
+    @field_validator("alternatives")
+    @classmethod
+    def clean_alternatives(cls, value):
+        return normalize_alternatives(value)
 
 
 class DecisionUpdate(BaseModel):
@@ -20,6 +56,11 @@ class DecisionUpdate(BaseModel):
         default=None,
         pattern="^(pending|in_progress|completed|cancelled)$"
     )
+
+    @field_validator("alternatives")
+    @classmethod
+    def clean_alternatives(cls, value):
+        return normalize_alternatives(value)
 
 
 class DecisionResponse(BaseModel):
