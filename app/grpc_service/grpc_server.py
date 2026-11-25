@@ -1,4 +1,5 @@
 ﻿
+import logging
 from concurrent import futures
 
 import grpc
@@ -7,6 +8,8 @@ from app.grpc_service import decision_pb2
 from app.grpc_service import decision_pb2_grpc
 
 from app.agents.orchestrator import Orchestrator
+
+logger = logging.getLogger(__name__)
 
 
 class DecisionAnalyzerService(
@@ -103,11 +106,9 @@ class DecisionAnalyzerService(
 
             return response
 
-        except Exception as error:
+        except Exception:
 
-            print(
-                f"Error during multi-agent analysis: {error}"
-            )
+            logger.exception("Error during multi-agent analysis")
 
             context.abort(
                 grpc.StatusCode.INTERNAL,
@@ -135,9 +136,7 @@ def serve():
 
     server.start()
 
-    print(
-        "Polymind IA Multi-Agent gRPC Server running on port 50051"
-    )
+    logger.info("Polymind IA Multi-Agent gRPC Server running on port 50051")
 
     server.wait_for_termination()
 
