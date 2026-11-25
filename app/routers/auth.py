@@ -2,7 +2,6 @@
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 
-from app.core.database import SessionLocal
 from app.core.security import (
     hash_password,
     verify_password,
@@ -11,7 +10,7 @@ from app.core.security import (
     SECRET_KEY,
     ALGORITHM
 )
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.user import (
     UserCreate,
@@ -26,15 +25,6 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
-
-
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post(
