@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -10,6 +11,47 @@ logger = logging.getLogger(__name__)
 
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+
+def is_ai_configured() -> bool:
+    """True when a Groq API key is available."""
+    return bool(GROQ_API_KEY)
+
+
+def generate_json(
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int = 1500,
+) -> dict | None:
+    """
+    Pide a Groq una respuesta en formato JSON y la devuelve como dict.
+
+    Devuelve None cuando no hay API key, cuando el proveedor falla o
+    cuando la respuesta no es un objeto JSON válido. Quien llama decide
+    cómo continuar sin IA.
+    """
+    if not GROQ_API_KEY:
+        return None
+
+    try:
+        client = Groq(api_key=GROQ_API_KEY)
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=max_tokens,
+            response_format={"type": "json_object"},
+            timeout=25,
+        )
+        data = json.loads(response.choices[0].message.content or "")
+    except Exception:
+        logger.exception("Groq no devolvió un JSON válido.")
+        return None
+
+    return data if isinstance(data, dict) else None
 
 
 def generate_ai_report(
