@@ -4,13 +4,17 @@ from app.agents.base_agent import BaseAgent
 
 class FinancialAgent(BaseAgent):
 
+    perspective = (
+        "Evalúas la viabilidad económica: costos iniciales y recurrentes, beneficios esperados, retorno de la inversión, ajuste al presupuesto descrito y riesgos financieros. Si no hay cifras, razona de forma cualitativa y dilo."
+    )
+
     def __init__(self):
         super().__init__(
             name="Financial Agent",
             description="Evalúa costos, presupuesto y viabilidad financiera de las alternativas."
         )
 
-    def analyze(self, decision: dict) -> dict:
+    def rule_based_analyze(self, decision: dict) -> dict:
 
         title = decision.get("title", "")
         description = decision.get("description", "")
