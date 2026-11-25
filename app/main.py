@@ -3,8 +3,10 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.database import Base, engine
+from app.services.groq_service import is_ai_configured
 
 # Importar modelos para registrar las tablas
 from app.models.user import User
@@ -67,7 +69,15 @@ def root():
 # Verificar estado del backend
 @app.get("/health")
 def health_check():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        database = "connected"
+    except Exception:
+        database = "unavailable"
+
     return {
-        "status": "healthy",
-        "database": "connected"
+        "status": "healthy" if database == "connected" else "degraded",
+        "database": database,
+        "ai_configured": is_ai_configured()
     }
