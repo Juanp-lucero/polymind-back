@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DATABASE_URL: str
+    # Imprime cada consulta SQL. Útil solo para depurar en local.
+    SQL_ECHO: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -17,7 +19,8 @@ settings = Settings()
 
 engine = create_engine(
     settings.DATABASE_URL,
-    echo=True
+    echo=settings.SQL_ECHO,
+    pool_pre_ping=True
 )
 
 
