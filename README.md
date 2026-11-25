@@ -37,7 +37,7 @@ Copia `.env.example` como `.env` y completa las variables necesarias para tu ent
 Variables nuevas para Groq:
 
 - `GROQ_API_KEY`: clave privada de Groq.
-- `GROQ_MODEL`: modelo a utilizar. Por defecto: `llama-3.3-70b-versatile`.
+- `GROQ_MODEL`: modelo a utilizar. Por defecto: `openai/gpt-oss-120b`.
 
 Puedes obtener la clave desde https://console.groq.com/keys.
 
@@ -89,7 +89,7 @@ Cada agente indica en sus observaciones si su evaluación se hizo con IA o con r
 | Variable | Descripción |
 |---|---|
 | `GROQ_API_KEY` | Llave de Groq. Sin ella todo funciona con reglas. |
-| `GROQ_MODEL` | Modelo (por defecto `llama-3.3-70b-versatile`). |
+| `GROQ_MODEL` | Modelo (por defecto `openai/gpt-oss-120b`). |
 
 ## Pruebas
 
