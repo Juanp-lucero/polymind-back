@@ -13,6 +13,48 @@ Desplegado en Vercel:
 | Estado de la API | https://polymind-back.vercel.app/health | |
 | Documentación de la API | https://polymind-back.vercel.app/docs | |
 
+## Cómo probarlo
+
+1. Entra a https://polymind-front.vercel.app e inicia sesión con la cuenta de prueba (o crea una cuenta en **Crear cuenta**).
+2. **Decisiones → Nueva decisión**. Datos de ejemplo:
+   - **Título de la decisión:** `Elegir plataforma para el sistema de inventario`
+   - **Descripción del reto:** `La empresa necesita reemplazar su hoja de cálculo de inventario. Hay 15 usuarios, presupuesto anual de 20 millones de pesos y el equipo de TI tiene 2 personas con experiencia en Python.`
+   - **Contexto adicional:** `El sistema debe estar en producción en 4 meses y conectarse con la facturación electrónica.`
+   - **Alternativas a evaluar** (una por casilla; usa **＋ Añadir alternativa** para la tercera): `Desarrollo propio con Django`, `SaaS de inventario (Odoo)`, `Mejorar la hoja de cálculo actual`
+
+   Pulsa **Guardar decisión**.
+3. En el detalle, pulsa **Ejecutar análisis**. Se ven los pasos del análisis mientras los agentes trabajan.
+4. Revisa el resultado:
+   - la puntuación ponderada de cada alternativa y la recomendada;
+   - la evaluación de cada agente con su justificación y la etiqueta **IA** o **Reglas**;
+   - los **desacuerdos** entre agentes;
+   - el aviso de **información insuficiente** cuando la descripción es muy corta;
+   - el **informe ejecutivo**.
+5. Usa **Editar** para cambiar la decisión y vuelve a analizarla. **Eliminar** pide confirmación.
+6. En **Resumen** está el total de decisiones y el estado del sistema (API y IA).
+
+## Cómo funciona
+
+```
+Angular (Vercel) ──REST + JWT──▶ FastAPI (Vercel) ──gRPC──▶ Orquestador
+                                      │                     ├─ Agente financiero   (30 %)
+                                      ▼                     ├─ Agente tecnológico  (30 %)
+                               PostgreSQL (Neon)            ├─ Agente de impacto humano (20 %)
+                                                            └─ Agente de riesgos   (20 %)
+                                                                       │
+                                                                       ▼
+                                                             Agente analista ──▶ informe
+```
+
+1. **Agentes especialistas:** los cuatro evalúan todas las alternativas en paralelo, cada uno desde su perspectiva. Cada uno pide a Groq (`openai/gpt-oss-120b`) un JSON con puntuación de 1 a 10 y justificación por alternativa. Antes de usarlo, el backend comprueba que:
+   - estén todas las alternativas;
+   - las puntuaciones estén entre 1 y 10;
+   - no haya justificaciones vacías ni alternativas inventadas.
+   Si algo falla, ese agente usa sus reglas heurísticas.
+2. **Agente analista:** pondera las puntuaciones, ordena las alternativas, detecta desacuerdos (4 puntos o más de diferencia) y vacíos de información. Groq redacta el informe ejecutivo; sin IA se genera un informe local.
+3. **Sesión:** el access token se renueva solo con el refresh token cuando vence.
+4. **Sin IA no se rompe nada:** cada paso tiene respaldo por reglas. Si el modelo configurado deja de existir, el backend prueba otro automáticamente.
+
 ## Requisitos
 
 - Python 3.10 o superior
