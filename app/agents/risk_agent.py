@@ -4,13 +4,17 @@ from app.agents.base_agent import BaseAgent
 
 class RiskAgent(BaseAgent):
 
+    perspective = (
+        "Evalúas los riesgos: identifica los principales riesgos de cada alternativa, su probabilidad e impacto, y posibles mitigaciones. Una puntuación alta significa riesgo bajo y manejable."
+    )
+
     def __init__(self):
         super().__init__(
             name="Risk Agent",
             description="Evalúa los riesgos y la seguridad de las alternativas."
         )
 
-    def analyze(self, decision: dict) -> dict:
+    def rule_based_analyze(self, decision: dict) -> dict:
 
         title = decision.get("title", "")
         description = decision.get("description", "")
