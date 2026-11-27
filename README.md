@@ -13,6 +13,14 @@ Desplegado en Vercel:
 | Estado de la API | https://polymind-back.vercel.app/health | |
 | Documentación de la API | https://polymind-back.vercel.app/docs | |
 
+## Cambios recientes
+
+Durante el despliegue en producción se hicieron los siguientes cambios pertinentes, por la vigencia de los servicios externos (APIs) y la configuración del servidor:
+
+- **Inicio de sesión y API caídos:** en producción, SQLAlchemy 2.1 necesita el driver `psycopg`, que no estaba instalado. Todas las peticiones a la base de datos, incluido el login, respondían con error 500. Se agregó la dependencia en `requirements.txt`.
+- **IA y API keys:** Groq retiró el modelo `llama-3.3-70b-versatile` en agosto de 2026 y los agentes dejaron de responder con IA. Se cambió a `openai/gpt-oss-120b`, con un modelo de respaldo automático. La llave se configuró como variable de entorno en Vercel y no queda en el código.
+- **Respaldo sin IA:** cada agente tiene reglas heurísticas, así que el análisis funciona aunque Groq falle.
+
 ## Cuenta de prueba
 
 Para revisar Polymind IA sin registrarse:
